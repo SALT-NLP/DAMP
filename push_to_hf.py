@@ -42,3 +42,10 @@ for split in splits:
     split_dict[split] = f"./CSTOP/CSTOP_{split}.tsv.csv"
 d = load_dataset("csv", data_files=split_dict)
 d.push_to_hub("WillHeld/cstop")
+
+splits = ["eval", "test", "train"]
+split_dict = {}
+for split in splits:
+    split_dict[split] = f"./cstop_artificial/{split}.csv"
+d = load_dataset("csv", data_files=split_dict)
+d.push_to_hub("WillHeld/cstop_artificial")
