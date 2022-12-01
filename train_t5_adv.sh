@@ -1,6 +1,6 @@
 export CUDA_VISIBLE_DEVICES=0,1
 
-for DATASET in mtop #top_v2 cstop_artificial
+for DATASET in mtop top_v2 cstop_artificial
 do
     python run_parsing.py \
 	   --model_name_or_path google/mt5-small \

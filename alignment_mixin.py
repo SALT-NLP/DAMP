@@ -36,7 +36,7 @@ class AlignedMT5ForConditionalGeneration(MT5ForConditionalGeneration):
             nn.ReLU(),
             nn.Linear(config.d_model // 2, 1),
         )
-        self.frozen = nn.Sequential(
+        self.adversary_frozen = nn.Sequential(
             nn.Linear(config.d_model, config.d_model // 2),
             nn.ReLU(),
             nn.Linear(config.d_model // 2, 1),
@@ -52,7 +52,7 @@ class AlignedMT5ForConditionalGeneration(MT5ForConditionalGeneration):
 
     @torch.no_grad()
     def copy_to_frozen(self):
-        for i, layer in enumerate(self.frozen):
+        for i, layer in enumerate(self.adversary_frozen):
             if i == 0 or i == 2:
                 layer.weight.data = self.adversary[i].weight.data.clone().detach()
                 layer.weight.data.requires_grad = False
@@ -73,7 +73,7 @@ class AlignedMT5ForConditionalGeneration(MT5ForConditionalGeneration):
         reversed_grad_states = GradientReversal.apply(hidden_states)
         if frozen:
             self.copy_to_frozen()
-            adversary = self.frozen
+            adversary = self.adversary_frozen
         else:
             adversary = self.adversary
         logits = (

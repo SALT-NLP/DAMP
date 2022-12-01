@@ -24,6 +24,7 @@ import sys
 import math
 from dataclasses import dataclass, field
 from typing import Optional
+from functools import partial
 
 import datasets
 import nltk  # Here to have a nice missing dependency error message early on
@@ -344,9 +345,7 @@ def create_adv_optimizer(opt_model, trainer_args):
         opt_model, pytorch_utils.ALL_LAYERNORM_LAYERS
     )
     decay_parameters = [name for name in decay_parameters if "bias" not in name]
-    adv_parameters = [
-        n for n, p in opt_model.named_parameters() if "adversary_weight" in n
-    ]
+    adv_parameters = [n for n, p in opt_model.named_parameters() if "adversary" in n]
     print(adv_parameters)
     optimizer_grouped_parameters = [
         {
@@ -367,10 +366,12 @@ def create_adv_optimizer(opt_model, trainer_args):
         },
         {
             "params": [
-                p for n, p in opt_model.named_parameters() if n in adv_parameters
+                p
+                for n, p in opt_model.named_parameters()
+                if n in adv_parameters and "frozen" not in n
             ],
             "weight_decay": 0.0,
-            "lr": 1,
+            "lr": 0.1,
         },
     ]
 
@@ -656,23 +657,31 @@ def main():
             f"`{model.__class__.__name__}`. This will lead to loss being calculated twice and will take up more memory"
         )
 
-    def preprocess_function(examples):
+    def preprocess_function(examples, uniform=False):
         # remove pairs where at least one record is None
 
         inputs, targets = [], []
         new_structural_tokens = set([])
         for i in range(len(examples[utterance_column])):
-            if examples[utterance_column][i] and examples[parse_column][i]:
+            if (
+                not uniform
+                and examples[utterance_column][i]
+                and examples[parse_column][i]
+            ):
                 inputs.append(examples[utterance_column][i])
                 targets.append(examples[parse_column][i])
-                new_structural_tokens.update(
-                    [
-                        whitespace_token
-                        for whitespace_token in examples[parse_column][i].split(" ")
-                        if whitespace_token.startswith("[IN:")
-                        or whitespace_token.startswith("[SL:")
-                    ]
-                )
+            elif uniform:
+                inputs.append(examples["utterance"][i])
+                targets.append(examples["semantic_parse"][i])
+            new_structural_tokens.update(
+                [
+                    whitespace_token
+                    for whitespace_token in targets[-1].split(" ")
+                    if whitespace_token.startswith("[IN:")
+                    or whitespace_token.startswith("[SL:")
+                ]
+            )
+
         num_added_toks = tokenizer.add_tokens(list(new_structural_tokens))
         if num_added_toks > 0:
             logger.info(f"Added {num_added_toks} new parsing tokens")
@@ -727,25 +736,23 @@ def main():
             if model_args.adversarial_alignment:
                 adv_mapping = {
                     "mtop": [
-                        f"train_{data_args.lang}"
-                        for lang in ["en", "es", "fr", "de", "hi", "th"]
+                        f"train_{lang}" for lang in ["en", "es", "fr", "de", "hi", "th"]
                     ],
-                    "top_v2": ["WillHeld/top_v2", "WillHeld/hinglish_top"],
-                    "cstop_artificial": ["WillHeld/cstop_artificial", "WillHeld/cstop"],
+                    "top_v2": [f"train_{ds}" for ds in ["top_v2", "hinglish_top"]],
+                    "cstop_artificial": [
+                        f"train_{ds}" for ds in ["cstop_artificial", "cstop"]
+                    ],
                 }
                 ds_names = adv_mapping[data_args.dataset_name]
-                if "mtop" in data_args.dataset_name:
-                    ds = [raw_datasets[lang_split] for lang_split in ds_names]
-                else:
-                    ds = [
-                        load_dataset(
-                            ds_name,
-                            split="train",
-                            cache_dir=model_args.cache_dir,
-                            use_auth_token=True if model_args.use_auth_token else None,
-                        )
-                        for ds_name in ds_names
-                    ]
+                ds = [
+                    load_dataset(
+                        "WillHeld/uniform_top",
+                        data_args.dataset_config_name,
+                        cache_dir=model_args.cache_dir,
+                        use_auth_token=True if model_args.use_auth_token else None,
+                    )[ds]
+                    for ds in ds_names
+                ]
                 adversarial_datasets = (
                     interleave_datasets(
                         ds,
@@ -754,10 +761,9 @@ def main():
                         stopping_strategy="all_exhausted",
                     )
                     .map(
-                        preprocess_function,
+                        partial(preprocess_function, uniform=True),
                         batched=True,
                         num_proc=data_args.preprocessing_num_workers,
-                        remove_columns=column_names,
                         load_from_cache_file=True,
                         desc="Running tokenizer on adversarial dataset",
                     )
