@@ -21,6 +21,7 @@ Fine-tuning the library models for sequence to sequence.
 import logging
 import os
 import sys
+import math
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -28,7 +29,7 @@ import datasets
 import nltk  # Here to have a nice missing dependency error message early on
 import numpy as np
 import torch
-from datasets import load_dataset
+from datasets import load_dataset, interleave_datasets, concatenate_datasets
 
 import evaluate
 import transformers
@@ -43,19 +44,22 @@ from transformers import (
     MBart50TokenizerFast,
     MBartTokenizer,
     MBartTokenizerFast,
+    Trainer,
     Seq2SeqTrainer,
     Seq2SeqTrainingArguments,
     set_seed,
+    pytorch_utils,
+    trainer_pt_utils,
 )
 from transformers.trainer_utils import get_last_checkpoint
-from transformers.utils import (
-    check_min_version,
-    is_offline_mode,
-    send_example_telemetry,
-)
+from transformers.utils import is_offline_mode
 from transformers.utils.versions import require_version
 
+from alignment_mixin import AlignedMT5ForConditionalGeneration
+from collator import DataCollatorForAdvSeq2Seq
+
 logger = logging.getLogger(__name__)
+datasets.disable_progress_bar()
 
 try:
     nltk.data.find("tokenizers/punkt")
@@ -126,6 +130,18 @@ class ModelArguments:
             "help": (
                 "Whether to automatically resize the position embeddings if `max_source_length` exceeds "
                 "the model's position embeddings."
+            )
+        },
+    )
+    adversarial_alignment: bool = field(
+        default=False,
+        metadata={"help": ("Whether to perform adversarial discriminative alignment")},
+    )
+    constrained_alignment: bool = field(
+        default=False,
+        metadata={
+            "help": (
+                "Whether to use constrained optimization for adversarial alignment"
             )
         },
     )
@@ -323,6 +339,48 @@ parsing_name_mapping = {
 }
 
 
+def create_adv_optimizer(opt_model, trainer_args):
+    decay_parameters = trainer_pt_utils.get_parameter_names(
+        opt_model, pytorch_utils.ALL_LAYERNORM_LAYERS
+    )
+    decay_parameters = [name for name in decay_parameters if "bias" not in name]
+    adv_parameters = [
+        n for n, p in opt_model.named_parameters() if "adversary_weight" in n
+    ]
+    print(adv_parameters)
+    optimizer_grouped_parameters = [
+        {
+            "params": [
+                p
+                for n, p in opt_model.named_parameters()
+                if n in decay_parameters and n not in adv_parameters
+            ],
+            "weight_decay": trainer_args.weight_decay,
+        },
+        {
+            "params": [
+                p
+                for n, p in opt_model.named_parameters()
+                if n not in decay_parameters and n not in adv_parameters
+            ],
+            "weight_decay": 0.0,
+        },
+        {
+            "params": [
+                p for n, p in opt_model.named_parameters() if n in adv_parameters
+            ],
+            "weight_decay": 0.0,
+            "lr": 1,
+        },
+    ]
+
+    optimizer_cls, optimizer_kwargs = Trainer.get_optimizer_cls_and_kwargs(trainer_args)
+
+    optimizer = optimizer_cls(optimizer_grouped_parameters, **optimizer_kwargs)
+
+    return (optimizer, None)
+
+
 def main():
     # See all possible arguments in src/transformers/training_args.py
     # or by passing the --help flag to this script.
@@ -465,14 +523,24 @@ def main():
         revision=model_args.model_revision,
         use_auth_token=True if model_args.use_auth_token else None,
     )
-    model = AutoModelForSeq2SeqLM.from_pretrained(
-        model_args.model_name_or_path,
-        from_tf=bool(".ckpt" in model_args.model_name_or_path),
-        config=config,
-        cache_dir=model_args.cache_dir,
-        revision=model_args.model_revision,
-        use_auth_token=True if model_args.use_auth_token else None,
-    )
+    if model_args.adversarial_alignment:
+        model = AlignedMT5ForConditionalGeneration.from_pretrained(
+            model_args.model_name_or_path,
+            from_tf=bool(".ckpt" in model_args.model_name_or_path),
+            config=config,
+            cache_dir=model_args.cache_dir,
+            revision=model_args.model_revision,
+            use_auth_token=True if model_args.use_auth_token else None,
+        )
+    else:
+        model = AutoModelForSeq2SeqLM.from_pretrained(
+            model_args.model_name_or_path,
+            from_tf=bool(".ckpt" in model_args.model_name_or_path),
+            config=config,
+            cache_dir=model_args.cache_dir,
+            revision=model_args.model_revision,
+            use_auth_token=True if model_args.use_auth_token else None,
+        )
 
     # We resize the embeddings only when necessary to avoid index errors. If you are creating a model from scratch
     # on a small vocab and want a smaller embedding size, remove this test.
@@ -606,7 +674,8 @@ def main():
                     ]
                 )
         num_added_toks = tokenizer.add_tokens(list(new_structural_tokens))
-        print("Added", num_added_toks, " new parsing tokens")
+        if num_added_toks > 0:
+            logger.info(f"Added {num_added_toks} new parsing tokens")
         model.resize_token_embeddings(len(tokenizer))
         inputs = [prefix + inp for inp in inputs]
         model_inputs = tokenizer(
@@ -615,6 +684,10 @@ def main():
             padding=padding,
             truncation=True,
         )
+        if "locale" in examples:
+            model_inputs["locale_label"] = [
+                1 if locale.startswith("en") else 0 for locale in examples["locale"]
+            ]
 
         # Tokenize targets with the `text_target` keyword argument
         labels = tokenizer(
@@ -651,6 +724,58 @@ def main():
                 load_from_cache_file=False,
                 desc="Running tokenizer on train dataset",
             )
+            if model_args.adversarial_alignment:
+                adv_mapping = {
+                    "mtop": [
+                        f"train_{data_args.lang}"
+                        for lang in ["en", "es", "fr", "de", "hi", "th"]
+                    ],
+                    "top_v2": ["WillHeld/top_v2", "WillHeld/hinglish_top"],
+                    "cstop_artificial": ["WillHeld/cstop_artificial", "WillHeld/cstop"],
+                }
+                ds_names = adv_mapping[data_args.dataset_name]
+                if "mtop" in data_args.dataset_name:
+                    ds = [raw_datasets[lang_split] for lang_split in ds_names]
+                else:
+                    ds = [
+                        load_dataset(
+                            ds_name,
+                            split="train",
+                            cache_dir=model_args.cache_dir,
+                            use_auth_token=True if model_args.use_auth_token else None,
+                        )
+                        for ds_name in ds_names
+                    ]
+                adversarial_datasets = (
+                    interleave_datasets(
+                        ds,
+                        probabilities=[1.0 / len(ds)] * len(ds),
+                        seed=42,
+                        stopping_strategy="all_exhausted",
+                    )
+                    .map(
+                        preprocess_function,
+                        batched=True,
+                        num_proc=data_args.preprocessing_num_workers,
+                        remove_columns=column_names,
+                        load_from_cache_file=True,
+                        desc="Running tokenizer on adversarial dataset",
+                    )
+                    .shuffle(seed=42)
+                )
+                train_dataset = (
+                    concatenate_datasets(
+                        [train_dataset]
+                        * math.ceil(
+                            float(len(adversarial_datasets)) / len(train_dataset)
+                        )
+                    )
+                    .select(range(len(adversarial_datasets)))
+                    .add_column("adversarial_data", adversarial_datasets["input_ids"])
+                    .add_column(
+                        "adversarial_label", adversarial_datasets["locale_label"]
+                    )
+                )
 
     if training_args.do_eval:
         max_target_length = data_args.val_max_target_length
@@ -698,7 +823,11 @@ def main():
     label_pad_token_id = (
         -100 if data_args.ignore_pad_token_for_loss else tokenizer.pad_token_id
     )
-    data_collator = DataCollatorForSeq2Seq(
+    if model_args.adversarial_alignment:
+        collator_class = DataCollatorForAdvSeq2Seq
+    else:
+        collator_class = DataCollatorForSeq2Seq
+    data_collator = collator_class(
         tokenizer,
         model=model,
         label_pad_token_id=label_pad_token_id,
@@ -748,6 +877,9 @@ def main():
         train_dataset=train_dataset if training_args.do_train else None,
         eval_dataset=eval_dataset if training_args.do_eval else None,
         tokenizer=tokenizer,
+        optimizers=create_adv_optimizer(model, training_args)
+        if model_args.adversarial_alignment
+        else None,
         data_collator=data_collator,
         compute_metrics=compute_metrics
         if training_args.predict_with_generate

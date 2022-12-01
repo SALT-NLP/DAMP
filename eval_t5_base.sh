@@ -1,4 +1,4 @@
-export CUDA_VISIBLE_DEVICES=5
+export CUDA_VISIBLE_DEVICES=0,1
 
 DATASET="mtop"
 for LANG in en es fr de hi th
