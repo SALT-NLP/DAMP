@@ -885,7 +885,7 @@ def main():
         tokenizer=tokenizer,
         optimizers=create_adv_optimizer(model, training_args)
         if model_args.adversarial_alignment
-        else None,
+        else (None, None),
         data_collator=data_collator,
         compute_metrics=compute_metrics
         if training_args.predict_with_generate
