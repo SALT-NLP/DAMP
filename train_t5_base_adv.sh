@@ -1,6 +1,5 @@
 export CUDA_VISIBLE_DEVICES=2,3
 
-# More Accumulation because model parallel instead of data parallel
 for DATASET in mtop top_v2 cstop_artificial
 do
     python run_parsing.py \

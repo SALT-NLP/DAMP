@@ -61,6 +61,11 @@ class AlignedMT5ForConditionalGeneration(MT5ForConditionalGeneration):
 
     @torch.no_grad()
     def non_negative_weight(self):
+        if self.adversary_weight_param.grad != None:
+            self.adversary_weight_param.data = self.adversary_weight_param.data - (
+                0.1 * self.adversary_weight_param.grad
+            )
+            self.adversary_weight_param.grad.zero_()
         self.adversary_weight_param.data = (self.adversary_weight_param).clamp(min=0)
 
     def adversary_loss(

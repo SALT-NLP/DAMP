@@ -368,10 +368,21 @@ def create_adv_optimizer(opt_model, trainer_args):
             "params": [
                 p
                 for n, p in opt_model.named_parameters()
-                if n in adv_parameters and "frozen" not in n
+                if n in adv_parameters
+                and "frozen" not in n
+                and "adversary_weight" not in n
             ],
             "weight_decay": 0.0,
             "lr": 0.1,
+        },
+        {
+            "params": [
+                p
+                for n, p in opt_model.named_parameters()
+                if n in adv_parameters and "frozen" not in n and "adversary_weight" in n
+            ],
+            "weight_decay": 0.0,
+            "lr": 0,
         },
     ]
 
@@ -865,11 +876,21 @@ def main():
         result = metric.compute(predictions=decoded_preds, references=decoded_labels)
         return result
 
-    if "small" not in model_args.model_name_or_path:
+    if "small" in model_args.model_name_or_path:
         available_gpus = [
             torch.cuda.device(i) for i in range(torch.cuda.device_count())
         ]
-        num_heads = 12 if "base" in model_args.model_name_or_path else 24
+        num_heads = 8
+        device_map = {
+            0: [0],
+            1: list(range(1, num_heads)),
+        }
+        model.parallelize(device_map)
+    elif "base" in model_args.model_name_or_path:
+        available_gpus = [
+            torch.cuda.device(i) for i in range(torch.cuda.device_count())
+        ]
+        num_heads = 12
         device_map = {
             0: list(range(0, 2)),
             1: list(range(2, num_heads)),
