@@ -1,9 +1,9 @@
 # DAMP: Doubly Aligned Multilingual Parser for Task-Oriented Dialogue
-This repository contains code to evaluate HuggingFace Seq2Seq models on the TOP family of datasets.
+This repository contains code to evaluate HuggingFace Seq2Seq models on the TOP family of datasets along with Constrained Adversarial Alignment.
 
 Feel free to contact [William Held](https://williamheld.com/) with any questions at wheld3 [@] gatech edu.
 
-[[Paper]](https://openreview.net/forum?id=77DPrCbYZdHl)
+For a description of methods, as well as reported results combining AMBER with pre-training alignment - see the [[Paper]](https://openreview.net/forum?id=77DPrCbYZdHl)
 
 ## Pre-Requisites
 `pip install -r requirements.txt
