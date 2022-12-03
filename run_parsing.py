@@ -373,7 +373,7 @@ def create_adv_optimizer(opt_model, trainer_args):
                 and "adversary_weight" not in n
             ],
             "weight_decay": 0.0,
-            "lr": 0.1,
+            "lr": 0.03,
         },
         {
             "params": [
@@ -876,26 +876,50 @@ def main():
         result = metric.compute(predictions=decoded_preds, references=decoded_labels)
         return result
 
-    if "small" in model_args.model_name_or_path:
-        available_gpus = [
-            torch.cuda.device(i) for i in range(torch.cuda.device_count())
-        ]
+    if "mt5-small" in model_args.model_name_or_path:
         num_heads = 8
         device_map = {
             0: [0],
             1: list(range(1, num_heads)),
         }
         model.parallelize(device_map)
-    elif "base" in model_args.model_name_or_path:
-        available_gpus = [
-            torch.cuda.device(i) for i in range(torch.cuda.device_count())
-        ]
+    elif "byt5-small" in model_args.model_name_or_path:
+        num_heads = 12
+        device_map = {
+            0: list(range(num_heads // 2)),
+            1: list(range(num_heads // 2, num_heads)),
+        }
+        model.device_map = device_map
+        model.encoder.parallelize(device_map)
+        num_heads = 4
+        device_map = {
+            0: list(range(num_heads // 2)),
+            1: list(range(num_heads // 2, num_heads)),
+        }
+        model.decoder.parallelize(device_map)
+        model.model_parallel = True
+    elif "mt5-base" in model_args.model_name_or_path:
         num_heads = 12
         device_map = {
             0: list(range(0, 2)),
             1: list(range(2, num_heads)),
         }
         model.parallelize(device_map)
+    elif "byt5-base" in model_args.model_name_or_path:
+        num_heads = 18
+        device_map = {
+            0: list(range(num_heads // 2)),
+            1: list(range(num_heads // 2, num_heads)),
+        }
+        model.device_map = device_map
+        model.encoder.parallelize(device_map)
+        num_heads = 6
+        device_map = {
+            0: list(range(num_heads // 2)),
+            1: list(range(num_heads // 2, num_heads)),
+        }
+        model.decoder.parallelize(device_map)
+        model.model_parallel = True
 
     # Initialize our Trainer
     trainer = Seq2SeqTrainer(
