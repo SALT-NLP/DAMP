@@ -1,4 +1,4 @@
-export CUDA_VISIBLE_DEVICES=0,1
+export CUDA_VISIBLE_DEVICES=2,3
 
 for DATASET in mtop top_v2 cstop_artificial
 do

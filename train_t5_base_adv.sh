@@ -20,7 +20,7 @@ do
 	   --push_to_hub_model_id t5-base-adv-$DATASET \
 	   --push_to_hub True \
 	   --output_dir /data/wheld3/mt5-base-adv-$DATASET \
-	   --per_device_train_batch_size=4 \
+	   --per_device_train_batch_size=8 \
 	   --gradient_accumulation_steps=64\
 	   --per_device_eval_batch_size=8 \
 	   --overwrite_output_dir \

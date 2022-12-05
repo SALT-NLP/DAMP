@@ -1,6 +1,5 @@
 export CUDA_VISIBLE_DEVICES=2,3
 
-# More Accumulation because model parallel instead of data parallel
 for DATASET in mtop top_v2 cstop_artificial
 do
     python run_parsing.py \
@@ -21,8 +20,8 @@ do
 	   --push_to_hub_model_id t5-base-vanilla-$DATASET \
 	   --push_to_hub True \
 	   --output_dir /data/wheld3/mt5-base-$DATASET \
-	   --per_device_train_batch_size=32 \
-	   --gradient_accumulation_steps=16\
+	   --per_device_train_batch_size=8 \
+	   --gradient_accumulation_steps=64\
 	   --per_device_eval_batch_size=8 \
 	   --overwrite_output_dir \
 	   --predict_with_generate

@@ -17,9 +17,9 @@ do
 	   --save_total_limit 1 \
 	   --load_best_model_at_end True \
 	   --dataset_name $DATASET \
-	   --push_to_hub_model_id byt5-small-$DATASET \
+	   --push_to_hub_model_id byt5-base-$DATASET \
 	   --push_to_hub True \
-	   --output_dir /data/wheld3/byt5-small-$DATASET \
+	   --output_dir /data/wheld3/byt5-base-$DATASET \
 	   --per_device_train_batch_size=8\
 	   --gradient_accumulation_steps=64\
 	   --per_device_eval_batch_size=8 \
