@@ -58,9 +58,11 @@ from transformers.utils.versions import require_version
 
 from alignment_mixin import AlignedMT5ForConditionalGeneration
 from collator import DataCollatorForAdvSeq2Seq
+from pointer_funcs import pointer_process
 
 logger = logging.getLogger(__name__)
 datasets.disable_progress_bar()
+pointer_method = True
 
 try:
     nltk.data.find("tokenizers/punkt")
@@ -679,8 +681,17 @@ def main():
                 and examples[utterance_column][i]
                 and examples[parse_column][i]
             ):
-                inputs.append(examples[utterance_column][i])
-                targets.append(examples[parse_column][i])
+
+                if pointer_method:
+                    src, target = pointer_process(
+                        examples[utterance_column][i], examples[parse_column][i]
+                    )
+                else:
+                    src = examples[utterance_column][i]
+                    target = examples[parse_column][i]
+                inputs.append(src)
+                targets.append(target)
+
             elif uniform:
                 inputs.append(examples["utterance"][i])
                 targets.append(examples["semantic_parse"][i])
@@ -690,6 +701,7 @@ def main():
                     for whitespace_token in targets[-1].split(" ")
                     if whitespace_token.startswith("[IN:")
                     or whitespace_token.startswith("[SL:")
+                    or whitespace_token.startswith("<pt-")
                 ]
             )
 
