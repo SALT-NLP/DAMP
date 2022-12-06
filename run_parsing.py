@@ -688,20 +688,20 @@ def main():
                 and examples[utterance_column][i]
                 and examples[parse_column][i]
             ):
-
-                if model_args.pointer_method:
-                    src, target = pointer_process(
-                        examples[utterance_column][i], examples[parse_column][i]
-                    )
-                else:
-                    src = examples[utterance_column][i]
-                    target = examples[parse_column][i]
-                inputs.append(src)
-                targets.append(target)
-
+                local_utterance_column = utterance_column
+                local_parse_column = parse_column
             elif uniform:
-                inputs.append(examples["utterance"][i])
-                targets.append(examples["semantic_parse"][i])
+                local_utterance_column = "utterance"
+                local_parse_column = "semantic_parse"
+            if model_args.pointer_method:
+                src, target = pointer_process(
+                    examples[utterance_column][i], examples[parse_column][i]
+                )
+            else:
+                src = examples[utterance_column][i]
+                target = examples[parse_column][i]
+            inputs.append(src)
+            targets.append(target)
             new_structural_tokens.update(
                 [
                     whitespace_token
