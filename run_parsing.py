@@ -695,11 +695,11 @@ def main():
                 local_parse_column = "semantic_parse"
             if model_args.pointer_method:
                 src, target = pointer_process(
-                    examples[utterance_column][i], examples[parse_column][i]
+                    examples[local_utterance_column][i], examples[local_parse_column][i]
                 )
             else:
-                src = examples[utterance_column][i]
-                target = examples[parse_column][i]
+                src = examples[local_utterance_column][i]
+                target = examples[local_parse_column][i]
             inputs.append(src)
             targets.append(target)
             new_structural_tokens.update(
