@@ -77,7 +77,10 @@ def pointer_process(source_seq, target_seq):
             if token.startswith("[") or token.startswith("]"):
                 print(source_seq, target_seq, token)
                 sys.exit()
-            token_out = format_pt(word_to_pos[token].pop(0))
+            if len(word_to_pos[token]) == 1:
+                token_out = format_pt(word_to_pos[token][0])
+            else:
+                token_out = format_pt(word_to_pos[token].pop(0))
         else:
             token_out = token
         target_seq_out.append(token_out)

@@ -62,7 +62,6 @@ from pointer_funcs import pointer_process
 
 logger = logging.getLogger(__name__)
 datasets.disable_progress_bar()
-pointer_method = True
 
 try:
     nltk.data.find("tokenizers/punkt")
@@ -140,6 +139,14 @@ class ModelArguments:
         default=False,
         metadata={"help": ("Whether to perform adversarial discriminative alignment")},
     )
+
+    pointer_method: bool = field(
+        default=False,
+        metadata={
+            "help": ("Whether to convert the data to a pointer generation format")
+        },
+    )
+
     constrained_alignment: bool = field(
         default=False,
         metadata={
@@ -682,7 +689,7 @@ def main():
                 and examples[parse_column][i]
             ):
 
-                if pointer_method:
+                if model_args.pointer_method:
                     src, target = pointer_process(
                         examples[utterance_column][i], examples[parse_column][i]
                     )
