@@ -58,8 +58,6 @@ def pointer_process(source_seq, target_seq):
                 + " "
                 + source_seq[offset + len(token) :]
             )
-            if backward:
-                print(source_seq, target_seq)
             base_offset += 2
             prev_offset = offset + len(token) + 2
 
@@ -70,7 +68,6 @@ def pointer_process(source_seq, target_seq):
             word_to_pos[token].append(position)
         else:
             word_to_pos[token] = [position]
-
     for token in target_tokens:
         token = token.strip()
         if token in word_to_pos:
