@@ -14,7 +14,10 @@ def fix_header_factory(dataset_name=None, uniform=False, locale=None):
     def fix_headers(examples):
         new_examples = {}
         if uniform:
-            columns = parsing_name_mapping[dataset_name]
+            if dataset_name == "hinglish_top" and locale == "en":
+                columns = ("en_query", "en_parse")
+            else:
+                columns = parsing_name_mapping[dataset_name]
             mapping = {columns[0]: "utterance", columns[1]: "semantic_parse"}
             if len(columns) == 3:
                 mapping[columns[2]] = "locale"
@@ -58,6 +61,14 @@ d = load_dataset("csv", data_files=split_dict)
 d.map(fix_header_factory()).push_to_hub("WillHeld/hinglish_top")
 uniform_hinglish_top = d.map(
     fix_header_factory(dataset_name="hinglish_top", uniform=True, locale="hin_en"),
+    remove_columns=[
+        column
+        for column in d["train"].column_names
+        if column not in ["utterance", "semantic_parse", "locale"]
+    ],
+)
+uniform_hinglish_top_en = d.map(
+    fix_header_factory(dataset_name="hinglish_top", uniform=True, locale="en"),
     remove_columns=[
         column
         for column in d["train"].column_names
@@ -126,7 +137,7 @@ for split in uniform_cstop:
     uniform_dataset[split + "_cstop"] = uniform_cstop[split]
 
 for split in uniform_top_v2:
-    uniform_dataset[split + "_top_v2"] = uniform_top_v2[split]
+    uniform_dataset[split + "_top_v2"] = uniform_hinglish_top_en[split]
 
 for split in uniform_hinglish_top:
     uniform_dataset[split + "_hinglish_top"] = uniform_hinglish_top[split]
