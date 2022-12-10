@@ -911,8 +911,8 @@ def main():
     elif "mt5-base" in model_args.model_name_or_path:
         num_heads = 12
         device_map = {
-            0: list(range(0, 2)),
-            1: list(range(2, num_heads)),
+            0: [0],
+            1: list(range(1, num_heads)),
         }
         model.parallelize(device_map)
     elif "byt5-base" in model_args.model_name_or_path:

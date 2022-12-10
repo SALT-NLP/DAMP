@@ -17,16 +17,18 @@ python run_parsing.py \
        --model_name_or_path WillHeld/t5-small-pointer-top_v2\
        --do_predict \
        --output_dir /data/wheld3/mt5-small-pointer-top_v2/eval-hinglish \
-       --per_device_eval_batch_size=32 \
+       --per_device_eval_batch_size=16 \
        --dataset_name hinglish_top \
+       --pointer-method \
        --predict_with_generate
 
 python run_parsing.py \
        --model_name_or_path WillHeld/t5-small-pointer-top_v2\
        --do_predict \
        --output_dir /data/wheld3/mt5-small-pointer-top_v2/eval-en \
-       --per_device_eval_batch_size=32 \
+       --per_device_eval_batch_size=16 \
        --dataset_name top_v2 \
+       --pointer-method \
        --predict_with_generate
 
 # python run_parsing.py \
