@@ -764,16 +764,7 @@ def main():
                 desc="Running tokenizer on train dataset",
             )
             if model_args.adversarial_alignment:
-                adv_mapping = {
-                    "mtop": [
-                        f"train_{lang}" for lang in ["en", "es", "fr", "de", "hi", "th"]
-                    ],
-                    "top_v2": [f"train_{ds}" for ds in ["top_v2", "hinglish_top"]],
-                    "cstop_artificial": [
-                        f"train_{ds}" for ds in ["cstop_artificial", "cstop"]
-                    ],
-                }
-                ds_names = adv_mapping[data_args.dataset_name]
+                ds_names = [f"train_{lang}" for lang in ["en", "es", "fr", "de", "hi", "th"]
                 ds = [
                     load_dataset(
                         "WillHeld/uniform_top",
