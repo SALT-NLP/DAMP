@@ -764,7 +764,9 @@ def main():
                 desc="Running tokenizer on train dataset",
             )
             if model_args.adversarial_alignment:
-                ds_names = [f"train_{lang}" for lang in ["en", "es", "fr", "de", "hi", "th"]
+                ds_names = [
+                    f"train_{lang}" for lang in ["en", "es", "fr", "de", "hi", "th"]
+                ]
                 ds = [
                     load_dataset(
                         "WillHeld/uniform_top",
