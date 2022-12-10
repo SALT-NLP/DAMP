@@ -1,17 +1,18 @@
 export CUDA_VISIBLE_DEVICES=4,5
 
-# DATASET="mtop"
-# for LANG in en es fr de hi th
-# do
-#     python run_parsing.py \
-# 	   --model_name_or_path WillHeld/t5-small-pointer-$DATASET \
-# 	   --do_predict \
-# 	   --lang $LANG \
-# 	   --output_dir /data/wheld3/mt5-small-pointer-$DATASET/eval-$LANG \
-# 	   --per_device_eval_batch_size=16 \
-# 	   --dataset_name $DATASET \
-# 	   --predict_with_generate
-# done
+DATASET="mtop"
+for LANG in en es fr de hi th
+do
+    python run_parsing.py \
+	   --model_name_or_path WillHeld/t5-small-pointer-$DATASET \
+	   --do_predict \
+	   --lang $LANG \
+	   --output_dir /data/wheld3/mt5-small-pointer-$DATASET/eval-$LANG \
+	   --per_device_eval_batch_size=16 \
+	   --dataset_name $DATASET \
+	   --pointer-method \
+	   --predict_with_generate
+done
 
 python run_parsing.py \
        --model_name_or_path WillHeld/t5-small-pointer-top_v2\
@@ -31,18 +32,20 @@ python run_parsing.py \
        --pointer-method \
        --predict_with_generate
 
-# python run_parsing.py \
-#        --model_name_or_path WillHeld/t5-small-pointer-cstop_artificial\
-#        --do_predict \
-#        --output_dir /data/wheld3/mt5-small-pointer-cstop_artificial/eval-spanglish \
-#        --per_device_eval_batch_size=32 \
-#        --dataset_name cstop \
-#        --predict_with_generate
+python run_parsing.py \
+       --model_name_or_path WillHeld/t5-small-pointer-cstop_artificial\
+       --do_predict \
+       --output_dir /data/wheld3/mt5-small-pointer-cstop_artificial/eval-spanglish \
+       --per_device_eval_batch_size=32 \
+       --dataset_name cstop \
+       --pointer-method \
+       --predict_with_generate
 
-# python run_parsing.py \
-#        --model_name_or_path WillHeld/t5-small-pointer-cstop_artificial\
-#        --do_predict \
-#        --output_dir /data/wheld3/mt5-small-pointer-cstop_artificial/eval-en \
-#        --per_device_eval_batch_size=32 \
-#        --dataset_name cstop_artificial \
-#        --predict_with_generate
+python run_parsing.py \
+       --model_name_or_path WillHeld/t5-small-pointer-cstop_artificial\
+       --do_predict \
+       --output_dir /data/wheld3/mt5-small-pointer-cstop_artificial/eval-en \
+       --per_device_eval_batch_size=32 \
+       --dataset_name cstop_artificial \
+       --pointer-method \
+       --predict_with_generate

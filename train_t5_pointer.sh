@@ -20,10 +20,10 @@ do
 	   --push_to_hub_model_id t5-small-pointer-$DATASET \
 	   --push_to_hub True \
 	   --output_dir /data/wheld3/mt5-small-pointer-$DATASET \
-	   --per_device_train_batch_size=8 \
-	   --gradient_accumulation_steps=64\
-	   --per_device_eval_batch_size=8 \
+	   --per_device_train_batch_size=16 \
+	   --gradient_accumulation_steps=32\
+	   --per_device_eval_batch_size=16 \
 	   --overwrite_output_dir \
-	   --pointer_method \
-	   --predict_with_generate
+	   --predict_with_generate \
+	   --pointer_method
 done
