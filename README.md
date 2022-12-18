@@ -3,7 +3,7 @@ This repository contains code to evaluate HuggingFace Seq2Seq models on the TOP 
 
 Feel free to contact [William Held](https://williamheld.com/) with any questions at wheld3 [@] gatech edu.
 
-For a description of methods, as well as reported results combining AMBER with pre-training alignment - see the [[Paper]](https://openreview.net/forum?id=77DPrCbYZdHl)
+For a description of methods, as well as reported results combining AMBER with pre-training alignment - see the [[Paper]](https://arxiv.org/abs/2212.08054)
 
 ## Pre-Requisites
 `pip install -r requirements.txt`
