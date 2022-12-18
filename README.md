@@ -6,7 +6,7 @@ Feel free to contact [William Held](https://williamheld.com/) with any questions
 For a description of methods, as well as reported results combining AMBER with pre-training alignment - see the [[Paper]](https://openreview.net/forum?id=77DPrCbYZdHl)
 
 ## Pre-Requisites
-`pip install -r requirements.txt
+`pip install -r requirements.txt`
 
 ## Reproducing MT5 Results with Pretrained Models
 ### mT5 Small 
